@@ -164,9 +164,7 @@ export function discoverVm(
         ([domain, id]) => domain === vm.platform && id.startsWith(nodePrefix),
       ) ?? [];
     if (nodeIds.length !== 1)
-      throw new Error(
-        "VM device has no unambiguous Proxmox node association.",
-      );
+      throw new Error("VM device has no unambiguous Proxmox node association.");
     node = nodeIds[0]![1].slice(nodePrefix.length);
   }
   const entities = registry.entities.filter(

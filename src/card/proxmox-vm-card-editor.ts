@@ -183,7 +183,8 @@ export class ProxmoxVmCardEditor extends LitElement {
                 <p>
                   ${binding.integration === "proxmoxve_custom" ? "Proxmox VE Custom" : "Official Proxmox VE"}
                   · ${binding.identity.name}<br />VM ${binding.identity.vmId} ·
-                  Node ${this.result.model?.identity.node ?? binding.identity.node}<br />Device:
+                  Node
+                  ${this.result.model?.identity.node ?? binding.identity.node}<br />Device:
                   ${binding.identity.deviceId}<br />State:
                   ${this.result.model?.state} · Source:
                   ${binding.sensors.status?.entity_id ?? "missing"}

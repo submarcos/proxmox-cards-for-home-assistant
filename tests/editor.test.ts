@@ -283,3 +283,24 @@ it("uses the minimal memory dependency path, preserving explicit raw overrides",
     requiredDisabled(binding, config, "memory").map((e) => e.entity_id),
   ).toEqual(["sensor.vm_memory", "sensor.vm_max_memory"]);
 });
+
+it("allows selecting devices and sensor overrides from both proxmoxve and proxmoxve_custom", () => {
+  const deviceField = sections[0]!.schema.find((f) => f.name === "device");
+  expect(deviceField?.selector).toEqual({
+    device: {
+      filter: [
+        { integration: "proxmoxve" },
+        { integration: "proxmoxve_custom" },
+      ],
+    },
+  });
+  const cpuOverride = overrideSchema[0]!.schema!.find((f) => f.name === "cpu");
+  expect(cpuOverride?.selector).toEqual({
+    entity: {
+      filter: [
+        { domain: "sensor", integration: "proxmoxve" },
+        { domain: "sensor", integration: "proxmoxve_custom" },
+      ],
+    },
+  });
+});

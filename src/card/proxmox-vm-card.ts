@@ -251,7 +251,7 @@ export class ProxmoxVmCard extends LitElement {
     if (this.config && !this.config.device.trim())
       return html`<ha-card
         ><div class="placeholder" role="status">
-          Select a VM device from the official Proxmox VE integration.
+          Select a VM device from the Proxmox VE integration.
         </div></ha-card
       >`;
     if (this.error)

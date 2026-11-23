@@ -128,7 +128,7 @@ export class ProxmoxVmCardEditor extends LitElement {
             ${this.form(section.schema)}
           </details>`,
       )}
-      ${!this.config.device ? html`<p role="status">Select a VM device from the official Proxmox VE integration.</p>` : nothing}
+      ${!this.config.device ? html`<p role="status">Select a VM device from the Proxmox VE integration.</p>` : nothing}
       ${this.result.loading ? html`<p role="status">Discovering VM capabilities…</p>` : nothing}
       ${
         this.result.error
@@ -181,8 +181,9 @@ export class ProxmoxVmCardEditor extends LitElement {
           binding && this.hassValue
             ? html`
                 <p>
-                  Official Proxmox VE · ${binding.identity.name}<br />VM
-                  ${binding.identity.vmId} · Node ${binding.identity.node}<br />Device:
+                  ${binding.integration === "proxmoxve_custom" ? "Proxmox VE Custom" : "Official Proxmox VE"}
+                  · ${binding.identity.name}<br />VM ${binding.identity.vmId} ·
+                  Node ${this.result.model?.identity.node ?? binding.identity.node}<br />Device:
                   ${binding.identity.deviceId}<br />State:
                   ${this.result.model?.state} · Source:
                   ${binding.sensors.status?.entity_id ?? "missing"}

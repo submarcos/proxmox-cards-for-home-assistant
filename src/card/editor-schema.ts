@@ -25,7 +25,14 @@ export const sections: { title: string; schema: FormField[] }[] = [
       {
         name: "device",
         required: true,
-        selector: { device: { filter: { integration: "proxmoxve" } } },
+        selector: {
+          device: {
+            filter: [
+              { integration: "proxmoxve" },
+              { integration: "proxmoxve_custom" },
+            ],
+          },
+        },
       },
       { name: "title", selector: { text: {} } },
       {
@@ -115,7 +122,12 @@ export const overrideSchema: FormField[] = [
     schema: entityRoles.map((name) => ({
       name,
       selector: {
-        entity: { filter: { domain: "sensor", integration: "proxmoxve" } },
+        entity: {
+          filter: [
+            { domain: "sensor", integration: "proxmoxve" },
+            { domain: "sensor", integration: "proxmoxve_custom" },
+          ],
+        },
       },
     })),
   },

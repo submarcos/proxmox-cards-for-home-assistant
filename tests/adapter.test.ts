@@ -168,3 +168,146 @@ describe("official Proxmox adapter", () => {
     expect(model.metrics.memory).toBeUndefined();
   });
 });
+
+describe("proxmoxve_custom (dougiteixeira/proxmoxve 6.0.0) adapter", () => {
+  const customEntity = (
+    key: string,
+    options: {
+      disabled?: string | null;
+      domain?: string;
+      translationKey?: string;
+    } = {},
+  ): EntityEntry => ({
+    entity_id: `${options.domain ?? "sensor"}.qemu_ha_104_${key}`,
+    device_id: "vm_custom",
+    platform: "proxmoxve_custom",
+    unique_id: `entry_104_${key}`,
+    translation_key: options.translationKey ?? key,
+    disabled_by: options.disabled ?? null,
+  });
+
+  function customRegistry(): Registry {
+    return {
+      devices: [
+        {
+          id: "vm_custom",
+          name: "QEMU HA (104)",
+          name_by_user: null,
+          model: "QEMU",
+          identifiers: [["proxmoxve_custom", "entry_QEMU_104"]],
+          via_device_id: "node_custom",
+        },
+        {
+          id: "node_custom",
+          name: "Node pve01",
+          name_by_user: null,
+          model: "Intel Xeon",
+          identifiers: [["proxmoxve_custom", "entry_NODE_pve01"]],
+          via_device_id: null,
+        },
+        {
+          id: "lxc_custom",
+          name: "LXC pihole (200)",
+          name_by_user: null,
+          model: "LXC",
+          identifiers: [["proxmoxve_custom", "entry_LXC_200"]],
+          via_device_id: "node_custom",
+        },
+      ],
+      entities: [
+        customEntity("status_raw"),
+        customEntity("cpu", { translationKey: "cpu_used" }),
+        customEntity("memory_used"),
+        customEntity("memory_total", { disabled: "integration" }),
+        customEntity("memory_used_perc"),
+        customEntity("disk_used"),
+        customEntity("disk_total", { disabled: "integration" }),
+        customEntity("network_in"),
+        customEntity("network_out"),
+        customEntity("uptime"),
+        customEntity("node"),
+        customEntity("start", { domain: "button" }),
+        customEntity("shutdown", { domain: "button" }),
+        customEntity("reboot", { domain: "button" }),
+        customEntity("stop", { domain: "button" }),
+        customEntity("suspend", { domain: "button" }),
+        customEntity("resume", { domain: "button" }),
+        customEntity("hibernate", { domain: "button" }),
+      ],
+    };
+  }
+
+  function customStates(): Record<string, HaState> {
+    return {
+      "sensor.qemu_ha_104_status_raw": state("running"),
+      "sensor.qemu_ha_104_cpu": state("37.5", "%"),
+      "sensor.qemu_ha_104_memory_used": state("4", "GB"),
+      "sensor.qemu_ha_104_memory_used_perc": state("25", "%"),
+      "sensor.qemu_ha_104_disk_used": state("20", "GB"),
+      "sensor.qemu_ha_104_network_in": state("512", "MB"),
+      "sensor.qemu_ha_104_network_out": state("128", "MB"),
+      "sensor.qemu_ha_104_uptime": {
+        state: "2026-10-01T00:00:00Z",
+        attributes: { device_class: "timestamp" },
+      },
+      "sensor.qemu_ha_104_node": state("pve01"),
+    };
+  }
+
+  it("discovers sensors, timestamp uptime, and lifecycle buttons for proxmoxve_custom", () => {
+    const binding = discoverVm(customRegistry(), "vm_custom");
+    expect(binding.integration).toBe("proxmoxve_custom");
+    expect(binding.actions.reboot?.unique_id).toBe("entry_104_reboot");
+    expect(binding.actions.suspend?.unique_id).toBe("entry_104_suspend");
+    const model = normalizeVm(
+      binding,
+      customStates(),
+      Date.parse("2026-10-01T02:00:00Z"),
+    );
+    expect(model.identity).toEqual({
+      deviceId: "vm_custom",
+      name: "QEMU HA (104)",
+      vmId: 104,
+      node: "pve01",
+    });
+    expect(model.state).toBe("running");
+    expect(model.metrics.cpu?.value).toBe(37.5);
+    expect(model.metrics.memory?.value).toBe(4e9);
+    expect(model.metrics.memory?.percentage).toBe(25);
+    expect(model.metrics.uptime?.value).toBe(7200);
+  });
+
+  it("maps paused status_raw to suspended and falls back to binary_sensor status", () => {
+    const binding = discoverVm(customRegistry(), "vm_custom");
+    const s = customStates();
+    s["sensor.qemu_ha_104_status_raw"] = state("paused");
+    expect(normalizeVm(binding, s).state).toBe("suspended");
+
+    const r = customRegistry();
+    r.entities = [
+      ...r.entities.filter((e) => e.unique_id !== "entry_104_status_raw"),
+      customEntity("status", { domain: "binary_sensor" }),
+    ];
+    const fallbackBinding = discoverVm(r, "vm_custom");
+    expect(
+      normalizeVm(fallbackBinding, {
+        ...customStates(),
+        "binary_sensor.qemu_ha_104_status": state("on"),
+      }).state,
+    ).toBe("running");
+    expect(
+      normalizeVm(fallbackBinding, {
+        ...customStates(),
+        "binary_sensor.qemu_ha_104_status": state("off"),
+      }).state,
+    ).toBe("stopped");
+  });
+
+  it("resolves node from sensor when parent node device is not tracked and rejects LXC", () => {
+    const r = customRegistry();
+    expect(() => discoverVm(r, "lxc_custom")).toThrow("container");
+    r.devices[0]!.via_device_id = null;
+    const binding = discoverVm(r, "vm_custom");
+    expect(normalizeVm(binding, customStates()).identity.node).toBe("pve01");
+  });
+});
